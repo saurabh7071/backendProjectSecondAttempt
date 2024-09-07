@@ -14,7 +14,7 @@ cloudinary.config({
     secure: true
 })
 
-const uploadOnColudinary = async(localFilePath) =>{
+const uploadOnCloudinary = async(localFilePath) =>{
     try {
         if(!localFilePath) return null
 
@@ -35,4 +35,14 @@ const uploadOnColudinary = async(localFilePath) =>{
     }
 }
 
-export {uploadOnColudinary}
+const deleteFromCloudinary = async (publicId) =>{
+    try {
+        const result = await cloudinary.uploader.destroy(publicId);
+        return result;
+        
+    } catch (error) {
+        throw new ApiError(500, "Failed to delete image from Cloudinary");
+    }
+}
+
+export {uploadOnCloudinary, deleteFromCloudinary}

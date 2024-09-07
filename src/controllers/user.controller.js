@@ -2,7 +2,7 @@ import { User } from "../models/user.model.js";
 import { ApiError } from "../utils/ApiError.js";
 import { asyncHandler } from "../utils/asyncHandler.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-import { uploadOnColudinary } from "../utils/cloudinary.js";
+import { uploadOnCloudinary, deleteFromCloudinary } from "../utils/cloudinary.js";
 import jwt from "jsonwebtoken";
 import mongoose from "mongoose";
 
@@ -184,8 +184,8 @@ const logoutUser = asyncHandler(async (req, res) => {
     await User.findByIdAndUpdate(
         req.user._id,
         {
-            $set: {
-                refreshToken: undefined,
+            $unset: {
+                refreshToken: 1,
             }
         },
         {
@@ -352,32 +352,31 @@ const updateUserAvatar = asyncHandler(async (req, res) => {
         throw new ApiError(400, "Avatar file is missing")
     }
 
-    // Find the user to get the current cover image URL 
+    // Find the user to get the current avatar url
     const user = await User.findById(req.user?._id).select("avatar")
 
     if(!user){
         throw new ApiError(404, "User not found")
     }
-
-    // check if there is a previous avatar and delete it from cloudinary 
+    
+    // upload the new avatar to cloudinary 
+    const newAvatar = await uploadOnCloudinary(avatarLocalPath)
+    
+    if (!newAvatar) {
+        throw new ApiError(400, "Avatar file is missing")
+    }
+    
+    // if there is a previous avatar and it's not the same, delete it from cloudinary 
     if(user.avatar){
         const publicId = getPublicIdFromUrl(user.avatar)
         await deleteFromCloudinary(publicId)
     }
-
-    // upload the new avatar to cloudinary 
-    const avatar = await uploadOnColudinary(avatarLocalPath)
-
-    if (!avatar) {
-        throw new ApiError(400, "Avatar file is missing")
-    }
-
     // Update the user's cover image in the database 
     const updateduser = await User.findByIdAndUpdate(
         req.user?._id,
         {
             $set: {
-                avatar: avatar.url
+                avatar: newAvatar.url,
             }
         },
         { new: true }
@@ -413,18 +412,21 @@ const updateUserCoverImage = asyncHandler(async (req, res) => {
     }
 
     // upload the new cover image to cloudinary 
-    const coverImage = await uploadOnColudinary(coverImageLocalFile)
+    const coverImage = await uploadOnCloudinary(coverImageLocalFile)
 
     if (!coverImage) {
         throw new ApiError(400, "Failed to Upload new Cover image")
     }
+
+    // update the user's cover image url in the database 
+    user.coverImage = coverImage.url;
 
     // Update the user's cover image URL in the database 
     const updatedUser = await User.findByIdAndUpdate(
         req.user?._id,
         {
             $set: {
-                coverImage: coverImage.url
+                coverImage: user.coverImage
             }
         },
         { new: true }
@@ -445,6 +447,8 @@ function getPublicIdFromUrl(url){
 // to get subscriber and subscribeTo from Subscription Model 
 const getUserChannelProfile = asyncHandler(async (req, res) => {
     const { username } = req.params
+    console.log(username);
+    
 
     if (!username?.trim()) {
         throw new ApiError(400, "Username is missing")
