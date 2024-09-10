@@ -80,8 +80,8 @@ const registerUser = asyncHandler(async (req, res) => {
     }
 
     // upload them to cloudinary, avtar
-    const avatar = await uploadOnColudinary(avatarLocalPath)
-    const coverImage = coverImageLocalPath ? await uploadOnColudinary(coverImageLocalPath) : { url: "" };
+    const avatar = await uploadOnCloudinary(avatarLocalPath)
+    const coverImage = coverImageLocalPath ? await uploadOnCloudinary(coverImageLocalPath) : { url: "" };
     console.log(avatar, coverImage);
 
     if (!avatar) {
